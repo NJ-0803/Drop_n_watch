@@ -18,6 +18,7 @@ const BRANDS = [
 
 /** Product lines that imply a brand, so "airpods" means only Apple listings count. */
 const LINE_BRAND: Record<string, string> = {
+  af1: 'nike', ...Object.fromEntries(Array.from({ length: 13 }, (_, i) => [`aj${i + 1}`, 'jordan'])),
   airpods: 'apple', iphone: 'apple', ipad: 'apple', macbook: 'apple', imac: 'apple', airtag: 'apple',
   galaxy: 'samsung', pixel: 'google', playstation: 'sony', ps5: 'sony', xbox: 'microsoft', kindle: 'amazon',
   dunk: 'nike', 'air max': 'nike', 'air force': 'nike', yeezy: 'adidas', samba: 'adidas', gazelle: 'adidas',
@@ -28,10 +29,12 @@ const ACCESSORY = /\b(case|cases|cover|covers|skin|protector|tempered|glass|stra
 const ACCESSORY_PHRASE = /\b(mobile|phone|back|flip|silicone|protective|grip|standing|rugged|armou?r|wallet|leather)\s+(case|cover)\b|\b(screen|camera|lens)\s+(protector|guard)\b/;
 const KNOCKOFF = /\b(compatible|compitable|copy|replica|first copy|master copy|premium quality|best quality|original certified|7a|clone|dupe|inspired)\b/;
 
-/** Sneaker nicknames that stores often spell out as colours instead. */
+/** Nicknames and shorthand that stores spell out instead: "panda" is a white/black colourway, "aj4" an Air Jordan 4. */
 const ALIASES: Record<string, string[][]> = {
   panda: [['white', 'black']],
   bred: [['black', 'red']],
+  af1: [['air', 'force', '1']],
+  ...Object.fromEntries(Array.from({ length: 13 }, (_, i) => [`aj${i + 1}`, [['jordan', String(i + 1)]]])),
 };
 
 export function normalize(s: string): string {
@@ -75,7 +78,8 @@ export function matchScore(item: MatchInput, q: string): number {
   if (accessoryListing && !ACCESSORY.test(nq)) return -1;
   if (KNOCKOFF.test(title) && !KNOCKOFF.test(nq)) return -1;
 
-  const brand = inferBrand(q);
+  // When the shopper asks for an accessory, the brand they typed is the device it fits, not its maker.
+  const brand = ACCESSORY.test(nq) ? undefined : inferBrand(q);
   if (brand) {
     // A listing's brand is its brand field plus the first two words of its title.
     const lead = normalize(`${item.brand ?? ''} ${title.trim().split(' ').slice(0, 2).join(' ')}`);

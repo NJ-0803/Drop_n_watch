@@ -14,8 +14,7 @@ export type SearchState =
   | { status: 'done'; result: SearchResult; link?: LinkInfo }
   | { status: 'error'; query: string; error: string };
 
-/** Anything that looks like a web address is treated as a pasted product link. */
-export const looksLikeLink = (s: string) => /^(https?:\/\/|www\.)|^[a-z0-9-]+(\.[a-z0-9-]+)+\/\S/i.test(s.trim());
+export { looksLikeLink } from '@/lib/linkParse';
 
 export function searchUrl(kind: Kind, q: string, size?: string) {
   const params = new URLSearchParams({ q });

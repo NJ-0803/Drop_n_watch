@@ -26,6 +26,10 @@ export const COLOURS = new Set([
 /** Words that make a different model, so "iPhone 17" never swallows "iPhone 17 Pro". */
 const MODEL_WORDS = /^(pro|max|plus|plu|ultra|mini|lite|air|fe|neo|prime|edge|fold\d*|flip\d*|\d+(gb|tb)?|gb|tb)$/;
 
+/** Tier words: a product carrying one the shopper didn't type ("Pro", "Max") is a step away from what they asked for. */
+const TIER_WORDS = ['pro', 'max', 'plus', 'plu', 'ultra', 'mini', 'lite', 'fe', 'edge', 'air', 'se', 'neo', 'fold', 'flip'];
+const TIER_PENALTY = 3;
+
 export type GroupOptions = { ignoreColours?: boolean };
 
 function signature(title: string, opts: GroupOptions): Set<string> {
@@ -87,7 +91,8 @@ export function groupOffers(offers: Offer[], query: string, opts: GroupOptions =
     g.best = g.offers.find(o => o.inStock) ?? null;
     g.image ??= g.offers.find(o => o.image)?.image;
     // Words beyond what the user typed: fewer means closer to what they asked for.
-    g.extra = Math.min(...g.sigs.map(sig => [...sig].filter(t => !q.has(t)).length));
+    const tiers = queryTokens(g.title).filter(t => TIER_WORDS.includes(t) && !q.has(t)).length;
+    g.extra = Math.min(...g.sigs.map(sig => [...sig].filter(t => !q.has(t)).length)) + tiers * TIER_PENALTY;
     // One row per store: a store listing the same model twice only shows its cheaper one.
     const seen = new Set<string>();
     g.offers = g.offers.filter(o => (seen.has(o.store) ? false : (seen.add(o.store), true)));
