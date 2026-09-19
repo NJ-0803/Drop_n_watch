@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
 import type { LinkResult, LinkSource, LinkVerdict } from '@/lib/link';
 import type { Kind } from '@/lib/saved';
+import type { StreamLine } from '@/lib/api';
+import { summarize, type StoreReport } from '@/lib/summarize';
 import type { SearchResult } from '@/lib/types';
 
 export type LinkInfo = { source: LinkSource; verdict: LinkVerdict };
@@ -32,6 +34,49 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
 export const fetchResult = (kind: Kind, q: string, size?: string, signal?: AbortSignal) =>
   getJson<SearchResult>(searchUrl(kind, q, size), signal);
 
+/**
+ * Streams a search: calls `onUpdate` with a fresh result each time a store
+ * answers, and once more when all have. If the stream breaks off, stores that
+ * never answered are reported as timed out.
+ */
+export async function streamResult(
+  kind: Kind,
+  q: string,
+  size: string | undefined,
+  signal: AbortSignal,
+  onUpdate: (result: SearchResult) => void,
+): Promise<void> {
+  const res = await fetch(`${searchUrl(kind, q, size)}&stream=1`, { signal });
+  if (!res.ok || !res.body) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? 'Something went wrong. Try again.');
+  }
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let start: Extract<StreamLine, { type: 'start' }> | undefined;
+  const reports: StoreReport[] = [];
+  let buffer = '';
+  let ended = false;
+  const waitingOn = () => (start?.stores ?? []).filter(s => !reports.some(r => r.store === s.store));
+
+  while (!ended) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    for (let i = buffer.indexOf('\n'); i >= 0; i = buffer.indexOf('\n')) {
+      const line = JSON.parse(buffer.slice(0, i)) as StreamLine;
+      buffer = buffer.slice(i + 1);
+      if (line.type === 'start') start = line;
+      else if (line.type === 'store' && start) {
+        reports.push(line.report);
+        onUpdate(summarize(start.query, reports, start.opts, waitingOn().map(s => s.storeName)));
+      } else if (line.type === 'end') ended = true;
+    }
+  }
+  if (!start) throw new Error('Something went wrong. Try again.');
+  for (const s of waitingOn()) reports.push({ ...s, ok: false, offers: [], error: 'timed out' });
+  onUpdate(summarize(start.query, reports, start.opts));
+}
+
 export const fetchLink = (url: string, signal?: AbortSignal) => getJson<LinkResult>(`/api/link?${new URLSearchParams({ url })}`, signal);
 
 /** Runs a search, cancelling any earlier one, and mirrors it into the address bar so it can be shared. */
@@ -57,8 +102,9 @@ export function useSearch(kind: Kind) {
       const ctrl = start(size ? { q, size } : { q });
       setState({ status: 'loading', query: q, size });
       try {
-        const result = await fetchResult(kind, q, size, ctrl.signal);
-        setState({ status: 'done', result });
+        await streamResult(kind, q, size, ctrl.signal, result => {
+          if (!ctrl.signal.aborted) setState({ status: 'done', result });
+        });
       } catch (e) {
         fail(ctrl, q, e);
       }

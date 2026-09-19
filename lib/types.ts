@@ -47,4 +47,6 @@ export type SearchResult = {
   /** True when nothing matched strictly and these are the closest matches. */
   loose: boolean;
   checkedAt: string;
+  /** While streaming: stores that haven't answered yet. */
+  pending?: string[];
 };

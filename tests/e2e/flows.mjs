@@ -10,7 +10,7 @@ page.on('console', m => m.type() === 'error' && errors.push(m.text()));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const text = () => page.evaluate(() => document.body.innerText);
 let pass = 0, fail = 0;
-const check = (name, cond) => { cond ? pass++ : fail++; console.log(cond ? 'PASS' : 'FAIL', name); };
+const check = (name, cond) => { if (cond) pass++; else fail++; console.log(cond ? 'PASS' : 'FAIL', name); };
 
 // fresh browser: no saved size
 await page.goto(BASE + '/', { waitUntil: 'networkidle0' });

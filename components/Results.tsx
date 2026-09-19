@@ -123,6 +123,16 @@ function GroupCard({ group, hero, kind, query, size, index }: { group: OfferGrou
 function StoreStrip({ result }: { result: SearchResult }) {
   return (
     <ul className="flex flex-wrap gap-2" aria-label="Stores checked">
+      {result.pending?.map((name, i) => (
+        <li key={name} className="flex h-9 items-center gap-2 rounded-full bg-surface2 px-3 text-[13px] text-muted">
+          <motion.span
+            className="h-2 w-2 rounded-full bg-rose"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.15 }}
+          />
+          {name}
+        </li>
+      ))}
       {result.stores.map(s =>
         s.ok ? (
           <li key={s.store} className="flex h-9 items-center gap-1.5 rounded-full bg-surface2 px-3 text-[13px] text-muted">
@@ -172,6 +182,7 @@ function AlsoCheck({ query, kind }: { query: string; kind: Kind }) {
 export function Results({ result, kind, hideFirst = false }: { result: SearchResult; kind: Kind; hideFirst?: boolean }) {
   const failed = result.stores.filter(s => !s.ok);
   const [hero, ...rest] = result.groups;
+  const stillChecking = (result.pending?.length ?? 0) > 0;
 
   return (
     <section aria-live="polite" className={hideFirst ? 'mt-6' : 'mt-8'}>
@@ -187,7 +198,9 @@ export function Results({ result, kind, hideFirst = false }: { result: SearchRes
         <p className="mt-3 text-[14px] text-muted">No exact match. These are the closest we found; check the name before buying.</p>
       )}
 
-      {result.groups.length === 0 ? (
+      {result.groups.length === 0 && stillChecking ? (
+        <p className="mt-5 text-[14px] text-muted">Still checking {result.pending!.join(', ')}…</p>
+      ) : result.groups.length === 0 ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 rounded-card bg-surface p-8 text-center shadow-card">
           <SearchX className="mx-auto text-faint" size={28} />
           <p className="mt-3 font-heading text-[18px] font-medium">Nothing matched “{result.query}”{result.size ? ` in UK ${result.size}` : ''}.</p>
@@ -196,7 +209,7 @@ export function Results({ result, kind, hideFirst = false }: { result: SearchRes
           </p>
         </motion.div>
       ) : (
-        <ul key={result.checkedAt} className="mt-5 grid gap-4 p-0">
+        <ul key={`${result.query}:${result.size ?? ''}`} className="mt-5 grid gap-4 p-0">
           <GroupCard group={hero} hero kind={kind} query={result.query} size={result.size} index={0} />
           {rest.length > 0 && (
             <motion.li {...riseAt(1)} className="list-none pt-3">
