@@ -1,5 +1,6 @@
 'use client';
 
+import { shouldAlert } from '@/lib/alerts';
 import type { SavedItem } from '@/lib/saved';
 import { fetchResult } from '@/lib/useSearch';
 
@@ -7,9 +8,8 @@ export type Recheck = { patch: Partial<SavedItem>; alert: boolean };
 
 /**
  * Re-runs a saved item's search, finds the same product by any of its listing
- * links, and decides whether it deserves an alert: at or under the target
- * price if one is set, otherwise a new lowest price since saving. The same
- * price never alerts twice.
+ * links, and decides whether it deserves an alert (see shouldAlert: only
+ * drops ever buzz).
  */
 export async function recheck(item: SavedItem): Promise<Recheck> {
   const result = await fetchResult(item.kind, item.query, item.size);
@@ -19,10 +19,7 @@ export async function recheck(item: SavedItem): Promise<Recheck> {
   const price = best?.price ?? null;
   const previousLow = item.lowest ?? item.savedPrice;
 
-  let alert = false;
-  if (item.alert && price != null && price !== item.alertedPrice) {
-    alert = item.target ? price <= item.target : previousLow != null && price < previousLow;
-  }
+  const alert = shouldAlert(item, price);
 
   return {
     alert,

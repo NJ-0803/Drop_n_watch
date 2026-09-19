@@ -14,6 +14,7 @@ const BRANDS = [
   'boat', 'jbl', 'bose', 'sennheiser', 'marshall', 'lg', 'hp', 'dell', 'lenovo', 'asus', 'acer', 'msi', 'microsoft', 'dyson',
   'philips', 'nike', 'jordan', 'adidas', 'puma', 'reebok', 'asics', 'converse', 'vans', 'crocs', 'yeezy', 'garmin', 'fossil',
   'casio', 'canon', 'nikon', 'fujifilm', 'gopro', 'logitech', 'razer', 'amazon', 'mi', 'tissot', 'skechers', 'bata',
+  'new balance', 'onitsuka tiger', 'hoka', 'salomon',
 ];
 
 /** Product lines that imply a brand, so "airpods" means only Apple listings count. */
@@ -53,7 +54,8 @@ export function queryTokens(q: string): string[] {
 
 export function inferBrand(q: string): string | undefined {
   const n = normalize(q);
-  const explicit = BRANDS.find(b => n.includes(` ${b} `));
+  // Compare normalised spellings on both sides: normalising turns "adidas" into "adida" and "vans" into "van".
+  const explicit = BRANDS.find(b => n.includes(normalize(b)));
   if (explicit) return explicit;
   for (const [line, brand] of Object.entries(LINE_BRAND)) if (n.includes(` ${normalize(line).trim()} `)) return brand;
   return undefined;
@@ -83,10 +85,8 @@ export function matchScore(item: MatchInput, q: string): number {
   if (brand) {
     // A listing's brand is its brand field plus the first two words of its title.
     const lead = normalize(`${item.brand ?? ''} ${title.trim().split(' ').slice(0, 2).join(' ')}`);
-    const brandOk =
-      lead.includes(` ${brand} `) ||
-      (brand === 'nike' && lead.includes(' jordan ')) ||
-      (brand === 'jordan' && lead.includes(' nike '));
+    const has = (b: string) => lead.includes(normalize(b));
+    const brandOk = has(brand) || (brand === 'nike' && has('jordan')) || (brand === 'jordan' && has('nike'));
     if (!brandOk) return -1;
   }
 

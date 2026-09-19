@@ -1,7 +1,8 @@
 import { decodeEntities, getText, StoreError } from '@/lib/http';
 import { bareHost, describeLink, LinkError, SHORT_HOSTS } from '@/lib/linkParse';
+import { sameProduct } from '@/lib/group';
 import { searchRetail } from '@/lib/retail';
-import type { Offer, SearchResult, StoreId } from '@/lib/types';
+import type { Offer, OfferGroup, SearchResult, StoreId } from '@/lib/types';
 
 export { LinkError };
 
@@ -83,6 +84,29 @@ export type LinkResult =
   | { mode: 'retail'; source: LinkSource; query: string; result: SearchResult; verdict: LinkVerdict }
   | { mode: 'sneakers'; source: LinkSource; query: string };
 
+/**
+ * The verdict for a pasted link. Mutates `source` to fill in its price and
+ * photo when the pasted listing shows up in its own store's results.
+ * Compares only against the pasted listing's own group, or failing that a
+ * group that is provably the same model (same storage, same Pro/Air/SE).
+ * Never the first group by default, and never another listing's price
+ * standing in for the pasted one: either would overclaim a saving.
+ */
+export function judgeLink(source: LinkSource, groups: OfferGroup[]): LinkVerdict {
+  const own = groups.flatMap(g => g.offers).find(o => sameListing(o.url, source.url));
+  if (source.price == null && own) source.price = own.price;
+  source.image ??= own?.image;
+
+  const group =
+    groups.find(g => g.offers.some(o => sameListing(o.url, source.url))) ??
+    groups.find(g => g.offers.some(o => sameProduct(o.title, source.title, { ignoreColours: true })));
+  const best = group?.best;
+  if (!best) return { kind: 'none' };
+  if (source.price == null) return { kind: 'unknown', best };
+  if (best.price < source.price && !sameListing(best.url, source.url)) return { kind: 'cheaper', best, saving: source.price - best.price };
+  return { kind: 'cheapest', best };
+}
+
 export async function checkLink(raw: string): Promise<LinkResult> {
   let plan = describeLink(raw);
   if (plan.short) plan = describeLink((await resolveShort(plan.url)).toString());
@@ -104,23 +128,6 @@ export async function checkLink(raw: string): Promise<LinkResult> {
   if (mode === 'sneakers') return { mode: 'sneakers', source, query };
 
   const result = await searchRetail(query);
-  // The pasted listing often turns up in its own store's results, which gives us its price.
-  const own = result.groups.flatMap(g => g.offers).find(o => sameListing(o.url, source.url));
-  if (source.price == null && own) source.price = own.price;
-  source.image ??= own?.image;
-
-  const group = result.groups.find(g => g.offers.some(o => sameListing(o.url, source.url))) ?? result.groups[0];
-  // Still no price: the same model from the same store (often just another colour) stands in for it.
-  if (source.price == null) {
-    const sibling = source.store && group?.offers.find(o => o.store === source.store && o.inStock);
-    if (sibling) source.price = sibling.price;
-  }
-  const best = group?.best;
-  let verdict: LinkVerdict;
-  if (!best) verdict = { kind: 'none' };
-  else if (source.price == null) verdict = { kind: 'unknown', best };
-  else if (best.price < source.price && !sameListing(best.url, source.url)) verdict = { kind: 'cheaper', best, saving: source.price - best.price };
-  else verdict = { kind: 'cheapest', best };
-
+  const verdict = judgeLink(source, result.groups);
   return { mode: 'retail', source, query, result, verdict };
 }

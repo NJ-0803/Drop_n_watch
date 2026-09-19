@@ -24,7 +24,10 @@ export const COLOURS = new Set([
 ]);
 
 /** Words that make a different model, so "iPhone 17" never swallows "iPhone 17 Pro". */
-const MODEL_WORDS = /^(pro|max|plus|plu|ultra|mini|lite|air|fe|neo|prime|edge|fold\d*|flip\d*|\d+(gb|tb)?|gb|tb)$/;
+const MODEL_WORDS = /^(pro|max|plus|plu|ultra|mini|lite|air|se|fe|neo|prime|edge|fold\d*|flip\d*|\d+(gb|tb)?|gb|tb)$/;
+
+/** Filler for sneakers ("Nike Air Jordan", "Dunk Low SE") but a different model on everyday products (iPad Air, Watch SE). */
+const RETAIL_MODEL_WORDS = new Set(['air', 'se']);
 
 /** Tier words: a product carrying one the shopper didn't type ("Pro", "Max") is a step away from what they asked for. */
 const TIER_WORDS = ['pro', 'max', 'plus', 'plu', 'ultra', 'mini', 'lite', 'fe', 'edge', 'air', 'se', 'neo', 'fold', 'flip'];
@@ -37,7 +40,11 @@ function signature(title: string, opts: GroupOptions): Set<string> {
     normalize(title)
       .trim()
       .split(' ')
-      .filter(t => t && !FILLER.has(t) && !/^(19|20)\d\d$/.test(t) && !(opts.ignoreColours && COLOURS.has(t))),
+      .filter(t => {
+        if (!t || /^(19|20)\d\d$/.test(t)) return false;
+        if (FILLER.has(t)) return !!opts.ignoreColours && RETAIL_MODEL_WORDS.has(t);
+        return !(opts.ignoreColours && COLOURS.has(t));
+      }),
   );
 }
 
@@ -53,6 +60,11 @@ function sameModel(a: Set<string>, b: Set<string>): boolean {
   // "Apple AirPods Pro 3" inside "Apple AirPods Pro 3 Bluetooth" is the same product.
   const small = a.size <= b.size ? a : b;
   return small.size >= 2 && shared === small.size;
+}
+
+/** Whether two listing names describe the same product (same rules as grouping). */
+export function sameProduct(a: string, b: string, opts: GroupOptions = {}): boolean {
+  return sameModel(signature(a, opts), signature(b, opts));
 }
 
 export function groupOffers(offers: Offer[], query: string, opts: GroupOptions = {}): OfferGroup[] {
