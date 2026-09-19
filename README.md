@@ -1,33 +1,25 @@
 # Dropwatch
 
-A private India sale watchlist, built with React, Vinext and Cloudflare D1.
+Type what you want (or paste a store link) and Dropwatch hands you the cheapest genuine listing. Includes a sneaker page that prices your exact UK size across Indian resellers.
 
-## Product behavior
+- **Everyday** (`/`): Flipkart, Reliance Digital, Vijay Sales, Snapdeal, and Amazon when it lets us in. Croma, Tata CLiQ, Myntra, Nykaa and Ajio block servers, so they appear as pre-filled search links.
+- **Sneakers** (`/sneakers`): Crep Dog Crew, Mainstreet, Superkicks, Dawntown, Limited Edt (Shopify, per-size prices) and VegNonVeg.
+- **Saved**: stored in the browser only and re-checked each time the site opens.
 
-- Watches exact product URLs (Amazon child ASIN and Flipkart PID) supplied by the user.
-- Stores watchlists, price observations and alerts in D1, scoped to the signed-in user.
-- Demo examples are isolated client-side illustrations, never retailer price evidence.
-- Computes estimated payable price from listed price, user-entered coupon, instant bank discount and fees. Offers expire automatically. Cashback and exchange are excluded.
-- Sounds on target crossings or strict new recorded lows. Manual, live and demo observations remain labelled. Historical lows are source-specific.
-- Browser sound must be activated by a user gesture. The page checks every five minutes while visible; returning to the tab triggers a check. Server-side throttling prevents overlapping tab requests. This is not a background monitoring service: closed/suspended tabs do not check or beep.
-- History retains the last 500 samples per retailer and preserves lower records beyond that window; 25 products per user.
+## How it works
 
-## Price connection
+`lib/retail/*` and `lib/sneakers/*` read each store's public search (JSON endpoints, or data embedded in the page). `lib/match.ts` keeps only listings that match every query word and the right brand, and drops accessories and knock-offs. `lib/group.ts` groups the same product across stores; `lib/collect.ts` runs all stores in parallel and reports any that failed. `lib/link.ts` identifies a pasted product link and compares it against the other stores.
 
-The connection dialog accepts the user's own Scrapingdog key for the current tab only. No credential is persisted or returned by the server. It can alternatively use the optional server-side `SCRAPINGDOG_API_KEY` environment variable. Configure hosted environment values through Sites. Provider requests use credits; this project does not purchase a subscription.
+Stores that answer servers with a bot check (Amazon, Croma, Nykaa, Ajio, Nike) are reported as unavailable and never worked around. Reliable Amazon prices need Amazon's Product Advertising API.
 
-Adapters follow these official docs (checked 18 September 2026):
-- https://www.scrapingdog.com/documentation/amazon-product-scraper/
-- https://www.scrapingdog.com/documentation/flipkart-product-api/
+API routes (`/api/search`, `/api/sneakers`, `/api/link`) are cached on Vercel's CDN for 15 minutes so repeat searches don't hit stores again.
 
-Amazon requests `domain=in`, `country=in`, exact ASIN; it rejects a mismatched/missing returned ASIN, non-INR prices and explicit stock failures. Flipkart uses the exact supplied product URL and PID. Currency and schema failures preserve prior samples and show an error. The user must verify matching variants, delivery location, eligibility and stock at checkout. An API key and successful live retailer responses are needed to validate end-to-end live pricing; no key was provided during development.
+## Develop
 
-## Development
+```bash
+npm install
+npm run dev      # http://localhost:3000
+npm run build
+```
 
-Use the existing pnpm lockfile and Sites helpers. The schema is in db/schema.ts; schema-only Drizzle migrations are in drizzle/. D1 JSON documents use optimistic revisions to protect concurrent edits. All write operations check user identity and origin, and queries are parameterized.
-
-Only an opaque site project ID and logical D1 binding belong in .openai/hosting.json. Do not commit keys or generated build output.
-
-## Validation
-
-Type checks and a production build passed. Price parsing, offer expiry, product URL validation, alert crossings, duplicate suppression and cross-store lows were checked. Route operations were exercised against SQLite with a D1-compatible adapter, including persistence, user isolation and revision conflicts. The managed preview passed desktop visual review, sound activation and a simulated target alert. Live provider requests remain unverified without an account key. WebMCP validation was unavailable because the permitted preview browser did not expose modelContext; UI flows remain usable.
+Deployed on Vercel, region `bom1` (Mumbai), see `vercel.json`. The UI uses the Bhookmark design tokens (Evening/Daylight themes) with `motion` for the 3D press, tilt and shoebox interactions.

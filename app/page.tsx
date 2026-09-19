@@ -1,2 +1,5 @@
-import Dashboard from './watchlist';
-export default function Home() { return <Dashboard />; }
+import { EverydayView } from '@/components/EverydayView';
+
+export default function Home() {
+  return <EverydayView />;
+}
