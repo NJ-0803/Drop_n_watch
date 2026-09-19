@@ -175,6 +175,11 @@ export async function checkLink(raw: string): Promise<LinkResult> {
   source.image ??= own?.image;
 
   const group = result.groups.find(g => g.offers.some(o => sameListing(o.url, source.url))) ?? result.groups[0];
+  // Still no price: the same model from the same store (often just another colour) stands in for it.
+  if (source.price == null) {
+    const sibling = group?.offers.find(o => o.store === source.store && o.inStock);
+    if (sibling) source.price = sibling.price;
+  }
   const best = group?.best;
   let verdict: LinkVerdict;
   if (!best) verdict = { kind: 'none' };
