@@ -1,7 +1,9 @@
 'use client';
 
 import { motion } from 'motion/react';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { describeLink } from '@/lib/linkParse';
 import { RETAIL_STORES } from '@/lib/stores';
 import { looksLikeLink, useSearch } from '@/lib/useSearch';
 import { Footer } from './Footer';
@@ -22,6 +24,19 @@ const STEPS = [
 
 export function EverydayView() {
   const { state, run, runLink } = useSearch('retail');
+  const router = useRouter();
+
+  /** Shoe links go straight to the sneaker page (read in the browser); other links get a store-by-store verdict. */
+  const submit = (text: string) => {
+    if (!looksLikeLink(text)) return run(text);
+    try {
+      const plan = describeLink(text);
+      if (!plan.short && plan.mode === 'sneakers') return router.push(`/sneakers?${new URLSearchParams({ q: plan.query })}`);
+    } catch {
+      /* the server explains what's wrong with the link */
+    }
+    runLink(text);
+  };
   const current = state.status === 'loading' || state.status === 'error' ? state.query : state.status === 'done' ? state.result.query : undefined;
 
   useEffect(() => {
@@ -52,12 +67,12 @@ export function EverydayView() {
               suggestions={SUGGESTIONS}
               initial={current}
               busy={state.status === 'loading'}
-              onSearch={q => (looksLikeLink(q) ? runLink(q) : run(q))}
+              onSearch={submit}
             />
           </motion.div>
         </motion.section>
 
-        <SearchStatus state={state} kind="retail" stores={RETAIL_STORES} onRetry={() => current && (looksLikeLink(current) ? runLink(current) : run(current))} />
+        <SearchStatus state={state} kind="retail" stores={RETAIL_STORES} onRetry={() => current && submit(current)} />
 
         {state.status === 'idle' && (
           <motion.ol variants={stagger} initial="hidden" animate="show" className="mt-12 grid gap-3 p-0 sm:grid-cols-3">

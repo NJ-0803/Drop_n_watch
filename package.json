@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:live": "node --import tsx --test \"tests/live/*.test.ts\""
+    "test:live": "node --import tsx --test \"tests/live/*.test.ts\"",
+    "test:e2e": "node tests/e2e/flows.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.47.0",
@@ -24,6 +25,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "puppeteer-core": "^25.11.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
