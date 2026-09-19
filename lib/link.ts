@@ -80,7 +80,7 @@ function nameFromPath(store: StoreId, u: URL): string | undefined {
 
 type PageDetails = { title?: string; price?: number; image?: string; inStock?: boolean };
 
-/** Reads schema.org Product data (name, price, stock) that most store pages publish for search engines. */
+/** Reads schema.org Product data (name, price, stock) that many store pages publish for search engines. */
 function detailsFromHtml(html: string): PageDetails {
   for (const m of html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
     let data: unknown;
@@ -104,8 +104,9 @@ function detailsFromHtml(html: string): PageDetails {
       };
     }
   }
-  const og = html.match(/property="og:title" content="([^"]+)"/)?.[1];
-  return { title: og ? decodeEntities(og).replace(/^Buy\s+/i, '').replace(/\s+at\s+[A-Z][\w ]+$/, '') : undefined };
+  // No product data means a generic or stripped page (its title can be "Online Electronic Shopping
+  // Store in India"), so we fall back to the name in the link itself.
+  return {};
 }
 
 /** Turns a long listing name into a search: stop at specs and punctuation, drop colours. */

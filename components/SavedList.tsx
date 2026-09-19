@@ -1,31 +1,13 @@
 'use client';
 
-import { ArrowDownRight, ArrowUpRight, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Bell, BellRing, Volume2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { askNotifications, chime, unlockSound } from '@/lib/chime';
 import { ago, money } from '@/lib/format';
 import { useSaved, type Kind, type SavedItem } from '@/lib/saved';
-import { fetchResult } from '@/lib/useSearch';
 import { LIFT } from './motion';
 import { PressButton } from './PressButton';
-
-const STALE_MS = 10 * 60 * 1000;
-const MAX_AUTO_CHECKS = 8;
-
-/** Re-checks a saved product by re-running its search and finding the group that holds one of its listings. */
-async function recheck(item: SavedItem): Promise<Partial<SavedItem>> {
-  const result = await fetchResult(item.kind, item.query, item.size);
-  const urls = new Set(item.urls);
-  const group = result.groups.find(g => g.offers.some(o => urls.has(o.url)));
-  const best = group?.best;
-  return {
-    lastPrice: best?.price ?? null,
-    lastStore: best?.storeName,
-    lastUrl: best?.url ?? item.lastUrl,
-    urls: group ? [...new Set([...item.urls, ...group.offers.map(o => o.url)])] : item.urls,
-    checkedAt: new Date().toISOString(),
-  };
-}
 
 function Change({ item }: { item: SavedItem }) {
   if (item.lastPrice == null || item.savedPrice == null) return null;
@@ -42,41 +24,71 @@ function Change({ item }: { item: SavedItem }) {
   );
 }
 
+/** Bell toggle plus an optional alert price. Turning it on is the tap that unlocks sound. */
+function AlertControl({ item, onChange }: { item: SavedItem; onChange: (patch: Partial<SavedItem>) => void }) {
+  const [draft, setDraft] = useState(item.target ? String(item.target) : '');
+  const on = !!item.alert;
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <motion.button
+        whileTap={{ scale: 0.9 }}
+        aria-pressed={on}
+        onClick={async () => {
+          if (!on) {
+            await unlockSound();
+            void askNotifications();
+          }
+          onChange({ alert: !on, alertedPrice: null });
+        }}
+        className="flex min-h-11 items-center gap-2 rounded-full px-4 text-[14px] ring-1 ring-inset ring-control/70 aria-pressed:bg-accent aria-pressed:text-accent-ink aria-pressed:ring-transparent"
+      >
+        <motion.span animate={on ? { rotate: [0, -18, 14, -8, 0] } : { rotate: 0 }} transition={{ duration: 0.6 }}>
+          {on ? <BellRing size={16} /> : <Bell size={16} />}
+        </motion.span>
+        {on ? 'Sound alert on' : 'Sound alert'}
+      </motion.button>
+      {on && (
+        <label className="flex min-h-11 items-center gap-2 rounded-full bg-surface2 px-4 text-[14px] text-muted ring-1 ring-inset ring-control/60">
+          <span>At or below ₹</span>
+          <input
+            inputMode="numeric"
+            value={draft}
+            placeholder="any new low"
+            onChange={e => setDraft(e.target.value.replace(/[^\d]/g, ''))}
+            onBlur={() => onChange({ target: draft ? Number(draft) : null, alertedPrice: null })}
+            className="tabular w-24 bg-transparent font-mono text-ink outline-none placeholder:font-sans placeholder:text-faint"
+            aria-label="Alert price in rupees; leave empty for any new low"
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+
 export function SavedList({ kind }: { kind: Kind }) {
   const { items, remove, update } = useSaved(kind);
-  const [checking, setChecking] = useState<Set<string>>(new Set());
-  const started = useRef(false);
-
-  // Once per visit, refresh anything not checked in the last ten minutes.
-  useEffect(() => {
-    if (started.current || !items.length) return;
-    started.current = true;
-    const due = items.filter(i => Date.now() - Date.parse(i.checkedAt) > STALE_MS).slice(0, MAX_AUTO_CHECKS);
-    setChecking(new Set(due.map(i => i.id)));
-    due.forEach(async item => {
-      try {
-        update(item.id, await recheck(item));
-      } catch {
-        /* keep the last known price */
-      } finally {
-        setChecking(s => {
-          const next = new Set(s);
-          next.delete(item.id);
-          return next;
-        });
-      }
-    });
-  }, [items, update]);
-
+  const alerts = items.filter(i => i.alert).length;
   if (!items.length) return null;
 
   return (
     <section className="mt-12" aria-labelledby={`saved-${kind}`}>
-      <h2 id={`saved-${kind}`} className="font-heading text-[20px] font-medium">
-        Saved <span className="tabular font-mono text-[15px] text-faint">{items.length}</span>
-      </h2>
-      <p className="mt-1 text-[14px] text-muted">Prices update each time you open Dropwatch. Saved on this device only.</p>
-      <ul className="mt-4 grid gap-3 p-0 sm:grid-cols-2">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id={`saved-${kind}`} className="font-heading text-[20px] font-medium">
+            Saved <span className="tabular font-mono text-[15px] text-faint">{items.length}</span>
+          </h2>
+          <p className="mt-1 text-[14px] text-muted">
+            {alerts > 0
+              ? `Sound alerts on for ${alerts} ${alerts === 1 ? 'item' : 'items'}. We re-check every 5 minutes while a Dropwatch tab is open.`
+              : 'Prices update each time you open Dropwatch. Turn on a sound alert to hear drops.'}
+          </p>
+        </div>
+        <PressButton tone="quiet" onClick={() => void chime()}>
+          <Volume2 size={16} /> Test sound
+        </PressButton>
+      </div>
+      <ul className="mt-4 grid gap-3 p-0 lg:grid-cols-2">
         <AnimatePresence initial={false}>
           {items.map(item => (
             <motion.li
@@ -85,7 +97,7 @@ export function SavedList({ kind }: { kind: Kind }) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1, transition: LIFT }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.18 } }}
-              className="flex list-none gap-3 rounded-card bg-surface p-3 shadow-card ring-1 ring-line/60"
+              className={`flex list-none gap-3 rounded-card bg-surface p-3 shadow-card ring-1 ${item.alert ? 'ring-rose/60' : 'ring-line/60'}`}
             >
               <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[#F6F2EC]">
                 {item.image && (
@@ -107,9 +119,7 @@ export function SavedList({ kind }: { kind: Kind }) {
                     <X size={17} />
                   </button>
                 </div>
-                {checking.has(item.id) ? (
-                  <div className="shimmer mt-1 h-5 w-32 rounded-full" aria-label="Checking price" />
-                ) : item.lastPrice != null ? (
+                {item.lastPrice != null ? (
                   <p className="mt-0.5 text-[14px] text-muted">
                     <span className="tabular font-mono text-[17px] text-ink">{money(item.lastPrice)}</span> at {item.lastStore}
                   </p>
@@ -120,6 +130,7 @@ export function SavedList({ kind }: { kind: Kind }) {
                   <Change item={item} />
                   <span className="text-[13px] text-faint">Checked {ago(item.checkedAt)}</span>
                 </div>
+                <AlertControl item={item} onChange={patch => update(item.id, patch)} />
                 {item.lastUrl && item.lastPrice != null && (
                   <PressButton href={item.lastUrl} tone="quiet" className="mt-2">
                     Buy at {item.lastStore} <ArrowUpRight size={16} />

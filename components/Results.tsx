@@ -4,7 +4,7 @@ import { ArrowUpRight, Bookmark, BookmarkCheck, Check, SearchX, TriangleAlert } 
 import { AnimatePresence, motion } from 'motion/react';
 import { money } from '@/lib/format';
 import { savedId, useSaved, type Kind } from '@/lib/saved';
-import { storeSearchUrl } from '@/lib/stores';
+import { LINK_ONLY, storeSearchUrl } from '@/lib/stores';
 import type { OfferGroup, SearchResult } from '@/lib/types';
 import { LIFT, riseAt } from './motion';
 import { PressButton } from './PressButton';
@@ -148,13 +148,35 @@ function StoreStrip({ result }: { result: SearchResult }) {
   );
 }
 
-export function Results({ result, kind }: { result: SearchResult; kind: Kind }) {
+/** Stores that refuse servers, offered as one-tap searches so nothing is missed. */
+function AlsoCheck({ query, kind }: { query: string; kind: Kind }) {
+  const stores = LINK_ONLY.filter(s => kind === 'retail' || s.forSneakers);
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span className="text-[13px] text-faint">Also check:</span>
+      {stores.map(s => (
+        <a
+          key={s.store}
+          href={storeSearchUrl(s.store, query)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex h-9 items-center gap-1 rounded-full px-3 text-[13px] text-muted ring-1 ring-inset ring-control/60 hover:text-ink"
+        >
+          {s.name} <ArrowUpRight size={13} />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+export function Results({ result, kind, hideFirst = false }: { result: SearchResult; kind: Kind; hideFirst?: boolean }) {
   const failed = result.stores.filter(s => !s.ok);
   const [hero, ...rest] = result.groups;
 
   return (
-    <section aria-live="polite" className="mt-8">
+    <section aria-live="polite" className={hideFirst ? 'mt-6' : 'mt-8'}>
       <StoreStrip result={result} />
+      <AlsoCheck query={result.query} kind={kind} />
       {failed.length > 0 && (
         <p className="mt-3 text-[14px] leading-relaxed text-muted">
           {failed.map(f => f.storeName).join(' and ')} couldn’t be checked automatically just now, so {failed.length > 1 ? 'they are' : 'it is'} not
@@ -190,11 +212,11 @@ export function Results({ result, kind }: { result: SearchResult; kind: Kind }) 
   );
 }
 
-export function LoadingState({ stores, size }: { stores: string[]; size?: string }) {
+export function LoadingState({ stores, size, link }: { stores: string[]; size?: string; link?: boolean }) {
   return (
     <section className="mt-8" aria-busy="true" aria-live="polite">
       <p className="text-[14px] text-muted">
-        Checking {stores.length} stores{size ? ` for UK ${size}` : ''}…
+        {link ? 'Reading your link, then checking' : 'Checking'} {stores.length} stores{size ? ` for UK ${size}` : ''}…
       </p>
       <ul className="mt-3 flex flex-wrap gap-2">
         {stores.map((s, i) => (

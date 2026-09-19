@@ -3,7 +3,7 @@
 import { motion } from 'motion/react';
 import { useEffect } from 'react';
 import { RETAIL_STORES } from '@/lib/stores';
-import { useSearch } from '@/lib/useSearch';
+import { looksLikeLink, useSearch } from '@/lib/useSearch';
 import { Footer } from './Footer';
 import { Header } from './Header';
 import { rise, stagger } from './motion';
@@ -15,19 +15,22 @@ import { TiltCard } from './TiltCard';
 
 const SUGGESTIONS = ['AirPods Pro 3', 'iPhone 17', 'PS5 Slim', 'Galaxy S25', 'Kindle Paperwhite'];
 const STEPS = [
-  ['Type it', 'The name is enough: “AirPods Pro 3”, “iPhone 17 256GB”.'],
-  ['We check', 'Amazon and Flipkart, with knock-offs and accessories filtered out.'],
+  ['Type or paste', 'A name like “iPhone 17 256GB”, or a link from Amazon, Flipkart or any store.'],
+  ['We check', 'Flipkart, Reliance Digital, Vijay Sales, Snapdeal and more, with knock-offs filtered out.'],
   ['Tap to buy', 'One button that opens the cheapest genuine listing.'],
 ];
 
 export function EverydayView() {
-  const { state, run } = useSearch('retail');
+  const { state, run, runLink } = useSearch('retail');
   const current = state.status === 'loading' || state.status === 'error' ? state.query : state.status === 'done' ? state.result.query : undefined;
 
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('q');
-    if (q) run(q);
-  }, [run]);
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get('url');
+    const q = params.get('q');
+    if (url) runLink(url);
+    else if (q) run(q);
+  }, [run, runLink]);
 
   return (
     <>
@@ -40,21 +43,21 @@ export function EverydayView() {
             Find it <em className="text-rose">cheaper.</em>
           </motion.h1>
           <motion.p variants={rise} className="mt-3 max-w-xl text-[16px] leading-relaxed text-muted sm:text-[17px]">
-            Type what you want. Dropwatch checks the stores and hands you the cheapest genuine link. No knock-offs, no accessories, no
-            prices to type in.
+            Type what you want, or paste a link from any store. Dropwatch checks the others and hands you the cheapest genuine
+            listing. No knock-offs, no accessories, no prices to type in.
           </motion.p>
           <motion.div variants={rise} className="mt-6">
             <SearchBox
-              placeholder="What do you want to buy?"
+              placeholder="Type a product, or paste a store link"
               suggestions={SUGGESTIONS}
               initial={current}
               busy={state.status === 'loading'}
-              onSearch={q => run(q)}
+              onSearch={q => (looksLikeLink(q) ? runLink(q) : run(q))}
             />
           </motion.div>
         </motion.section>
 
-        <SearchStatus state={state} kind="retail" stores={RETAIL_STORES} onRetry={() => current && run(current)} />
+        <SearchStatus state={state} kind="retail" stores={RETAIL_STORES} onRetry={() => current && (looksLikeLink(current) ? runLink(current) : run(current))} />
 
         {state.status === 'idle' && (
           <motion.ol variants={stagger} initial="hidden" animate="show" className="mt-12 grid gap-3 p-0 sm:grid-cols-3">

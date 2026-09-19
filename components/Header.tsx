@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'motion/react';
+import { AlertWatcher } from './AlertWatcher';
 import { SOFT } from './motion';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -14,6 +15,8 @@ const TABS = [
 export function Header() {
   const path = usePathname();
   return (
+    <>
+    <AlertWatcher />
     <header className="sticky top-0 z-30 border-b border-line/70 bg-bg/80 backdrop-blur-xl">
       <div className="mx-auto flex h-[68px] max-w-3xl items-center gap-3 px-4 sm:px-6">
         <Link href="/" className="font-serif text-[28px] leading-none tracking-tight text-ink">
@@ -57,5 +60,6 @@ export function Header() {
         })}
       </nav>
     </header>
+    </>
   );
 }

@@ -19,6 +19,14 @@ export type SavedItem = {
   lastStore?: string;
   lastUrl?: string;
   checkedAt: string;
+  /** Sound alert on for this item. */
+  alert?: boolean;
+  /** Alert when the price reaches this; empty means "any new low". */
+  target?: number | null;
+  /** Lowest price seen since saving. */
+  lowest?: number | null;
+  /** The price we last alerted at, so the same drop doesn't chime twice. */
+  alertedPrice?: number | null;
 };
 
 const KEY = 'dw-saved-v1';
@@ -41,6 +49,9 @@ function write(items: SavedItem[]) {
   }
   window.dispatchEvent(new Event(EVENT));
 }
+
+export const readSaved = read;
+export const writeSaved = write;
 
 export const savedId = (kind: Kind, group: OfferGroup, size?: string) => `${kind}:${size ?? ''}:${group.key}`;
 
@@ -78,6 +89,7 @@ export function useSaved(kind: Kind) {
           lastStore: best?.storeName,
           lastUrl: best?.url,
           checkedAt: new Date().toISOString(),
+          lowest: best?.price ?? null,
         },
         ...all,
       ]);

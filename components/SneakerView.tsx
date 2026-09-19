@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { UK_SIZES } from '@/lib/sneakers/sizes';
 import { SNEAKER_STORES } from '@/lib/stores';
-import { useSearch } from '@/lib/useSearch';
+import { looksLikeLink, useSearch } from '@/lib/useSearch';
 import { Footer } from './Footer';
 import { Header } from './Header';
 import { rise, stagger } from './motion';
@@ -30,7 +30,7 @@ function initialSize(): string | undefined {
 const noSubscribe = () => () => {};
 
 export function SneakerView() {
-  const { state, run } = useSearch('sneakers');
+  const { state, run, runLink } = useSearch('sneakers');
   const startSize = useSyncExternalStore(noSubscribe, initialSize, () => undefined);
   const [picked, setPicked] = useState<string>();
   const size = picked ?? startSize;
@@ -60,7 +60,8 @@ export function SneakerView() {
       picker.current?.nudge();
       return;
     }
-    run(q, size);
+    if (looksLikeLink(q)) runLink(q, size);
+    else run(q, size);
   };
 
   return (
