@@ -12,12 +12,15 @@ export function SearchBox({
   initial,
   busy,
   onSearch,
+  onPrefetch,
 }: {
   placeholder: string;
   suggestions: string[];
   initial?: string;
   busy: boolean;
   onSearch: (q: string) => void;
+  /** Warm a suggestion when it's hovered or focused, so the click is instant. */
+  onPrefetch?: (q: string) => void;
 }) {
   const [q, setQ] = useState(initial ?? '');
   // When a search starts from elsewhere (a chip, the address bar), show its words in the box.
@@ -67,6 +70,8 @@ export function SearchBox({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0, transition: { ...LIFT, delay: 0.1 + i * 0.05 } }}
             whileTap={{ scale: 0.94 }}
+            onPointerEnter={() => onPrefetch?.(s)}
+            onFocus={() => onPrefetch?.(s)}
             onClick={() => {
               setQ(s);
               submit(s);

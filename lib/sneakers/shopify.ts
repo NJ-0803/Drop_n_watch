@@ -1,4 +1,5 @@
 import { getJson, pool } from '@/lib/http';
+import { memo } from '@/lib/memo';
 import { filterMatches } from '@/lib/match';
 import type { Offer, SneakerStore } from '@/lib/types';
 
@@ -38,14 +39,15 @@ export function ukSize(variantTitle: string, optionNames: string[]): string | un
 
 export async function searchShopify(cfg: (typeof SHOPIFY_STORES)[number], q: string, size: string): Promise<Offer[]> {
   const base = `https://${cfg.host}`;
-  const suggest = await getJson<Suggest>(
-    `${base}/search/suggest.json?q=${encodeURIComponent(q)}&resources[type]=product&resources[limit]=10`,
+  // Search results and product files don't depend on size, so they're cached without it: changing size re-prices instantly.
+  const suggest = await memo(`sfy-search|${cfg.host}|${q.toLowerCase()}`, () =>
+    getJson<Suggest>(`${base}/search/suggest.json?q=${encodeURIComponent(q)}&resources[type]=product&resources[limit]=10`),
   );
   const candidates = suggest.resources.results.products.map(p => ({ ...p, brand: p.vendor }));
   const { kept } = filterMatches(candidates, q);
 
-  const offers = await pool(kept.slice(0, MAX_PRODUCTS_PER_STORE), 2, async (hit): Promise<Offer | null> => {
-    const p = await getJson<Product>(`${base}/products/${hit.handle}.js`).catch(() => null);
+  const offers = await pool(kept.slice(0, MAX_PRODUCTS_PER_STORE), MAX_PRODUCTS_PER_STORE, async (hit): Promise<Offer | null> => {
+    const p = await memo(`sfy-product|${cfg.host}|${hit.handle}`, () => getJson<Product>(`${base}/products/${hit.handle}.js`)).catch(() => null);
     if (!p) return null;
     const optionNames = p.options.map(o => (typeof o === 'string' ? o : o.name));
     const shipIndex = optionNames.findIndex(n => /deliver|ship|timeline|dispatch/i.test(n));

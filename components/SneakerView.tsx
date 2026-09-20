@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { UK_SIZES } from '@/lib/sneakers/sizes';
 import { SNEAKER_STORES } from '@/lib/stores';
 import { describeLink } from '@/lib/linkParse';
-import { looksLikeLink, useSearch } from '@/lib/useSearch';
+import { looksLikeLink, prefetch, useSearch } from '@/lib/useSearch';
 import { Footer } from './Footer';
 import { Header } from './Header';
 import { rise, stagger } from './motion';
@@ -142,7 +142,7 @@ export function SneakerView() {
               {linkError}
             </p>
           )}
-          <SearchBox placeholder="Which sneaker? e.g. Jordan 4 Bred Reimagined" suggestions={SUGGESTIONS} initial={current} busy={state.status === 'loading'} onSearch={search} />
+          <SearchBox placeholder="Which sneaker? e.g. Jordan 4 Bred Reimagined" suggestions={SUGGESTIONS} initial={current} busy={state.status === 'loading'} onSearch={search} onPrefetch={q => size && prefetch('sneakers', q, size)} />
         </div>
 
         <SearchStatus state={state} kind="sneakers" stores={SNEAKER_STORES} onRetry={() => current && size && run(current, size)} />

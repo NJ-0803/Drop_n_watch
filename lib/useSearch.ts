@@ -77,6 +77,51 @@ export async function streamResult(
   onUpdate(summarize(start.query, reports, start.opts));
 }
 
+// Finished results are kept for five minutes (in memory, and per tab in sessionStorage) so a repeated
+// search, the back button or a prefetched suggestion shows instantly without touching the network.
+const CACHE_MS = 5 * 60 * 1000;
+const memory = new Map<string, { at: number; result: SearchResult }>();
+const prefetching = new Map<string, Promise<SearchResult | null>>();
+const cacheKey = (kind: Kind, q: string, size?: string) => `${kind}|${q.trim().toLowerCase()}|${size ?? ''}`;
+
+function cached(key: string): SearchResult | undefined {
+  let hit = memory.get(key);
+  if (!hit) {
+    try {
+      const raw = sessionStorage.getItem(`dw-cache:${key}`);
+      if (raw) hit = JSON.parse(raw) as { at: number; result: SearchResult };
+    } catch {}
+  }
+  return hit && Date.now() - hit.at < CACHE_MS ? hit.result : undefined;
+}
+
+function remember(key: string, result: SearchResult) {
+  if (result.pending?.length || !result.stores.some(s => s.ok)) return;
+  const entry = { at: Date.now(), result };
+  memory.set(key, entry);
+  try {
+    sessionStorage.setItem(`dw-cache:${key}`, JSON.stringify(entry));
+  } catch {}
+}
+
+/**
+ * Starts a search in the background (a hovered suggestion) so it's ready by the time it's clicked. A click
+ * before it finishes streams as usual; the server shares the store requests already in flight.
+ */
+export function prefetch(kind: Kind, q: string, size?: string) {
+  const key = cacheKey(kind, q, size);
+  if (cached(key) || prefetching.has(key)) return;
+  let last: SearchResult | null = null;
+  const job = streamResult(kind, q, size, new AbortController().signal, r => (last = r))
+    .then(() => {
+      if (last) remember(key, last);
+      return last;
+    })
+    .catch(() => null)
+    .finally(() => prefetching.delete(key));
+  prefetching.set(key, job);
+}
+
 export const fetchLink = (url: string, signal?: AbortSignal) => getJson<LinkResult>(`/api/link?${new URLSearchParams({ url })}`, signal);
 
 /** Runs a search, cancelling any earlier one, and mirrors it into the address bar so it can be shared. */
@@ -100,10 +145,15 @@ export function useSearch(kind: Kind) {
   const run = useCallback(
     async (q: string, size?: string) => {
       const ctrl = start(size ? { q, size } : { q });
+      const key = cacheKey(kind, q, size);
+      const hit = cached(key);
+      if (hit) return setState({ status: 'done', result: hit });
       setState({ status: 'loading', query: q, size });
       try {
         await streamResult(kind, q, size, ctrl.signal, result => {
-          if (!ctrl.signal.aborted) setState({ status: 'done', result });
+          if (ctrl.signal.aborted) return;
+          setState({ status: 'done', result });
+          remember(key, result);
         });
       } catch (e) {
         fail(ctrl, q, e);

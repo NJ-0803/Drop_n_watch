@@ -14,8 +14,8 @@ type FkProduct = {
 // Each product sits under a `productInfo.value` node wherever the page layout
 // puts it, so we walk the whole tree instead of trusting one path.
 export async function searchFlipkart(q: string): Promise<Offer[]> {
-  // Flipkart is slow to answer servers (often 8–10s), so it gets a longer wait.
-  const html = await getText(`https://www.flipkart.com/search?q=${encodeURIComponent(q)}`, 14000);
+  // Flipkart is often slow to answer servers. Results stream, so it no longer holds anyone up; 9s is its cut-off.
+  const html = await getText(`https://www.flipkart.com/search?q=${encodeURIComponent(q)}`, 9000);
   const json = html.match(/window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\});\s*<\/script>/)?.[1];
   if (!json) throw new StoreError('returned no readable results');
   let state: unknown;

@@ -1,4 +1,5 @@
 import { decodeEntities, getText, pool } from '@/lib/http';
+import { memo } from '@/lib/memo';
 import { filterMatches } from '@/lib/match';
 import type { Offer } from '@/lib/types';
 
@@ -54,10 +55,10 @@ function sizeState(html: string, size: string): 'in' | 'out' | 'none' {
 }
 
 export async function searchVegNonVeg(q: string, size: string): Promise<Offer[]> {
-  const html = await getText(`${BASE}/search?q=${encodeURIComponent(q)}`);
+  const html = await memo(`vnv-search|${q.toLowerCase()}`, () => getText(`${BASE}/search?q=${encodeURIComponent(q)}`));
   const { kept } = filterMatches(parseCards(html), q);
-  const offers = await pool(kept.slice(0, MAX_PRODUCTS), 2, async (card): Promise<Offer | null> => {
-    const page = await getText(card.url).catch(() => null);
+  const offers = await pool(kept.slice(0, MAX_PRODUCTS), MAX_PRODUCTS, async (card): Promise<Offer | null> => {
+    const page = await memo(`vnv-product|${card.url}`, () => getText(card.url)).catch(() => null);
     if (!page) return null;
     const state = sizeState(page, size);
     if (state === 'none') return null;

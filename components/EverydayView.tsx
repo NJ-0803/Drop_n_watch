@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { describeLink } from '@/lib/linkParse';
 import { RETAIL_STORES } from '@/lib/stores';
-import { looksLikeLink, useSearch } from '@/lib/useSearch';
+import { looksLikeLink, prefetch, useSearch } from '@/lib/useSearch';
 import { Footer } from './Footer';
 import { Header } from './Header';
 import { rise, stagger } from './motion';
@@ -68,6 +68,7 @@ export function EverydayView() {
               initial={current}
               busy={state.status === 'loading'}
               onSearch={submit}
+              onPrefetch={q => prefetch('retail', q)}
             />
           </motion.div>
         </motion.section>
