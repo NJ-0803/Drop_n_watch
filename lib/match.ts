@@ -72,6 +72,9 @@ export type MatchInput = { title: string; brand?: string };
 export function matchScore(item: MatchInput, q: string): number {
   const title = normalize(item.title);
   const nq = normalize(q);
+  // Stores often keep the brand out of the title ("ADIDAS" + "Samba OG Sneakers For Men"),
+  // so words are looked for across the brand and the title together.
+  const haystack = item.brand ? normalize(`${item.brand} ${item.title}`) : title;
   // An accessory word only disqualifies when it names the product: early in the
   // title ("Case for AirPods…") or followed by "for". "Apple Watch … Case with
   // Sport Band" is a watch.
@@ -92,7 +95,7 @@ export function matchScore(item: MatchInput, q: string): number {
 
   const tokens = queryTokens(q);
   if (!tokens.length) return 0;
-  const hits = tokens.filter(t => hasToken(title, t)).length;
+  const hits = tokens.filter(t => hasToken(haystack, t)).length;
   return hits / tokens.length;
 }
 

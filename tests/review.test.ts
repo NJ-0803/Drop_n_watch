@@ -32,6 +32,10 @@ describe('brands whose names look plural', () => {
   ]) {
     it(`keeps genuine ${brand}: "${title}"`, () => assert.equal(matchScore({ title, brand }, q), 1));
   }
+  it('finds the brand when the store keeps it out of the title', () =>
+    assert.equal(matchScore({ title: 'Samba OG Sneakers For Men', brand: 'ADIDAS' }, 'adidas samba'), 1));
+  it('finds an Amazon phone whose title omits the brand', () =>
+    assert.equal(matchScore({ title: 'iPhone 16 128 GB: 5G Mobile Phone', brand: 'Apple' }, 'apple iphone 16'), 1));
   it('still rejects a fake Adidas', () => assert.equal(matchScore({ title: 'Samba OG Style Sneakers', brand: 'Generic' }, 'adidas samba'), -1));
 });
 
