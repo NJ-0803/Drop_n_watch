@@ -160,3 +160,31 @@ body::before {
     background-position: -120% 0;
   }
 }
+
+/* Taste: reveal content when reached, with inner tilt/3D surfaces untouched. */
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-reveal[data-reveal='pending'] {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  .scroll-reveal[data-reveal='visible'] {
+    transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1), transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .scroll-reveal:focus-within {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (min-width: 640px) {
+  .scroll-reveal[data-reveal='pending'] { transform: translateY(24px); }
+  .scroll-reveal[data-reveal='visible'] {
+    transition-duration: 680ms;
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+}
+
+@media print {
+  .scroll-reveal[data-reveal] { opacity: 1; transform: none; transition: none; }
+}

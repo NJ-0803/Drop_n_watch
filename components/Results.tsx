@@ -6,7 +6,8 @@ import { money } from '@/lib/format';
 import { savedId, useSaved, type Kind } from '@/lib/saved';
 import { LINK_ONLY, storeSearchUrl } from '@/lib/stores';
 import type { OfferGroup, SearchResult } from '@/lib/types';
-import { LIFT, riseAt } from './motion';
+import { LIFT } from './motion';
+import { ScrollReveal } from './ScrollReveal';
 import { PressButton } from './PressButton';
 import { TiltCard } from './TiltCard';
 
@@ -42,7 +43,7 @@ function SaveButton({ saved, onToggle }: { saved: boolean; onToggle: () => void 
   );
 }
 
-function GroupCard({ group, hero, kind, query, size, index }: { group: OfferGroup; hero: boolean; kind: Kind; query: string; size?: string; index: number }) {
+function GroupCard({ group, hero, kind, query, size }: { group: OfferGroup; hero: boolean; kind: Kind; query: string; size?: string }) {
   const { toggle, has } = useSaved(kind);
   const best = group.best;
   // Compare by link: after the trip from server to page, `best` is a separate copy of its offer.
@@ -50,7 +51,7 @@ function GroupCard({ group, hero, kind, query, size, index }: { group: OfferGrou
   const id = savedId(kind, group, size);
 
   return (
-    <motion.li {...riseAt(index)} className="list-none">
+    <ScrollReveal as="li" className="list-none">
       <TiltCard className="rounded-card" max={hero ? 4 : 5}>
         <article className={`rounded-card bg-surface shadow-card ring-1 ring-line/60 ${hero ? 'p-4 sm:p-6' : 'p-4 sm:p-5'}`}>
           {hero && best && (
@@ -116,7 +117,7 @@ function GroupCard({ group, hero, kind, query, size, index }: { group: OfferGrou
           )}
         </article>
       </TiltCard>
-    </motion.li>
+    </ScrollReveal>
   );
 }
 
@@ -210,14 +211,14 @@ export function Results({ result, kind, hideFirst = false }: { result: SearchRes
         </motion.div>
       ) : (
         <ul key={`${result.query}:${result.size ?? ''}`} className="mt-5 grid gap-4 p-0">
-          <GroupCard group={hero} hero kind={kind} query={result.query} size={result.size} index={0} />
+          <GroupCard group={hero} hero kind={kind} query={result.query} size={result.size} />
           {rest.length > 0 && (
-            <motion.li {...riseAt(1)} className="list-none pt-3">
+            <ScrollReveal as="li" className="list-none pt-3">
               <h2 className="font-mono text-[12px] tracking-[0.18em] text-faint uppercase">Other matches · {rest.length}</h2>
-            </motion.li>
+            </ScrollReveal>
           )}
-          {rest.map((g, i) => (
-            <GroupCard key={g.key} group={g} hero={false} kind={kind} query={result.query} size={result.size} index={i + 2} />
+          {rest.map(g => (
+            <GroupCard key={g.key} group={g} hero={false} kind={kind} query={result.query} size={result.size} />
           ))}
         </ul>
       )}

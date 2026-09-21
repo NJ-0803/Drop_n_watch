@@ -23,3 +23,7 @@ npm run build
 ```
 
 Deployed on Vercel, region `bom1` (Mumbai), see `vercel.json`. The UI uses the Bhookmark design tokens (Evening/Daylight themes) with `motion` for the 3D press, tilt and shoebox interactions.
+
+## Design refinements
+
+For frontend refinement work, read the [Taste brief](docs/taste/README.md) and the [vendored Taste skill](docs/taste/SKILL.md). The preservation brief takes precedence over generic redesign defaults.
