@@ -12,6 +12,7 @@ import { rise, stagger } from './motion';
 import { SavedList } from './SavedList';
 import { SearchBox } from './SearchBox';
 import { SearchStatus } from './SearchStatus';
+import { ScrollReveal } from './ScrollReveal';
 import { SneakerBanner } from './SneakerBanner';
 import { TiltCard } from './TiltCard';
 
@@ -76,9 +77,9 @@ export function EverydayView() {
         <SearchStatus state={state} kind="retail" stores={RETAIL_STORES} onRetry={() => current && submit(current)} />
 
         {state.status === 'idle' && (
-          <motion.ol variants={stagger} initial="hidden" animate="show" className="mt-12 grid gap-3 p-0 sm:grid-cols-3">
+          <ol className="mt-12 grid gap-3 p-0 sm:grid-cols-3">
             {STEPS.map(([title, body], i) => (
-              <motion.li key={title} variants={rise} className="list-none">
+              <ScrollReveal as="li" key={title} delay={i * 65} className="list-none">
                 <TiltCard className="h-full rounded-card" max={8}>
                   <div className="h-full rounded-card bg-surface p-5 shadow-card ring-1 ring-line/60">
                     <span className="font-mono text-[13px] text-rose">0{i + 1}</span>
@@ -86,9 +87,9 @@ export function EverydayView() {
                     <p className="mt-1 text-[14px] leading-relaxed text-muted">{body}</p>
                   </div>
                 </TiltCard>
-              </motion.li>
+              </ScrollReveal>
             ))}
-          </motion.ol>
+          </ol>
         )}
 
         <SavedList kind="retail" />

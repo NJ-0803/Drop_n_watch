@@ -1,5 +1,7 @@
 # Dropwatch
 
+[Live website](https://dropwatch-tau.vercel.app/)
+
 Type what you want (or paste a store link) and Dropwatch hands you the cheapest genuine listing. Includes a sneaker page that prices your exact UK size across Indian resellers.
 
 - **Everyday** (`/`): Flipkart, Reliance Digital, Vijay Sales, Snapdeal, and Amazon when it lets us in. Croma, Tata CLiQ, Myntra, Nykaa and Ajio block servers, so they appear as pre-filled search links.
@@ -23,3 +25,7 @@ npm run build
 ```
 
 Deployed on Vercel, region `bom1` (Mumbai), see `vercel.json`. The UI uses the Bhookmark design tokens (Evening/Daylight themes) with `motion` for the 3D press, tilt and shoebox interactions.
+
+## Design refinements
+
+For frontend refinement work, read the [Taste brief](docs/taste/README.md) and the [vendored Taste skill](docs/taste/SKILL.md). The preservation brief takes precedence over generic redesign defaults.

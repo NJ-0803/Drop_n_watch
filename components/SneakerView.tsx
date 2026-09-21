@@ -12,6 +12,7 @@ import { rise, stagger } from './motion';
 import { SavedList } from './SavedList';
 import { SearchBox } from './SearchBox';
 import { SearchStatus } from './SearchStatus';
+import { ScrollReveal } from './ScrollReveal';
 import { Shoebox } from './Shoebox';
 import { SizePicker, type SizePickerHandle } from './SizePicker';
 
@@ -131,7 +132,9 @@ export function SneakerView() {
         </motion.section>
 
         <div className="mt-8 grid gap-5">
-          <SizePicker ref={picker} value={size} onChange={chooseSize} />
+          <ScrollReveal>
+            <SizePicker ref={picker} value={size} onChange={chooseSize} />
+          </ScrollReveal>
           {askSize && (
             <p role="alert" className="-mt-2 text-[14px] text-bad">
               {current ? `Pick your size to see prices for “${current.length > 60 ? 'your link' : current}”.` : 'Pick your size first: resellers price every size differently.'}
@@ -142,7 +145,9 @@ export function SneakerView() {
               {linkError}
             </p>
           )}
-          <SearchBox placeholder="Which sneaker? e.g. Jordan 4 Bred Reimagined" suggestions={SUGGESTIONS} initial={current} busy={state.status === 'loading'} onSearch={search} onPrefetch={q => size && prefetch('sneakers', q, size)} />
+          <ScrollReveal>
+            <SearchBox placeholder="Which sneaker? e.g. Jordan 4 Bred Reimagined" suggestions={SUGGESTIONS} initial={current} busy={state.status === 'loading'} onSearch={search} onPrefetch={q => size && prefetch('sneakers', q, size)} />
+          </ScrollReveal>
         </div>
 
         <SearchStatus state={state} kind="sneakers" stores={SNEAKER_STORES} onRetry={() => current && size && run(current, size)} />
